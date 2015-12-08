@@ -23,7 +23,7 @@ add_custom_target(
 
 
 
-set( libs jsoncpp jsonrpccpp-common jsonrpccpp-client ${OpenCV_LIBS} zbar)
+set( libs jsoncpp jsonrpccpp-common jsonrpccpp-client ${OpenCV_LIBS} zbar pthread)
 
 ADD_EXECUTABLE(kodi-qrcode-client ${CURRENT_SRC}    )
 TARGET_LINK_LIBRARIES(kodi-qrcode-client ${libs})

@@ -28,6 +28,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <zbar.h>
+#include "Gpio.hpp"
 
 using namespace jsonrpc;
 using namespace cv;
@@ -36,6 +37,10 @@ using namespace zbar;
 
 
 #include <iostream>
+
+// #define VIDEO_DEBUG
+#define GPIO_PIN 18
+#define CAMERA_INDEX 0
 
 #define LOG(_msg) std::cout << _msg << std::endl;
 
@@ -62,7 +67,7 @@ bool play(XbmcRemoteClient &_cli, int _albumid)
 }
 
 
-void videoloop(VideoCapture &_capture, XbmcRemoteClient& _cli)
+void videoloop(VideoCapture &_capture, XbmcRemoteClient& _cli, Gpio &_gpio)
 {
      ImageScanner scanner;
    scanner.set_config(ZBAR_NONE, ZBAR_CFG_ENABLE, 1);
@@ -72,7 +77,9 @@ void videoloop(VideoCapture &_capture, XbmcRemoteClient& _cli)
 
    cout << "Frame size : " << dWidth << " x " << dHeight << endl;
 
-   namedWindow("MyVideo", CV_WINDOW_AUTOSIZE); //create a window called "MyVideo"
+   #ifdef VIDEO_DEBUG
+    namedWindow("MyVideo", CV_WINDOW_AUTOSIZE); //create a window called "MyVideo"
+   #endif
 
    int lastAlbum = -1;
    while (1)
@@ -102,6 +109,7 @@ void videoloop(VideoCapture &_capture, XbmcRemoteClient& _cli)
       // extract results
       for(Image::SymbolIterator symbol = image.symbol_begin(); symbol != image.symbol_end(); ++symbol)
       {
+        _gpio.setValue(Gpio::GPIO_HIGH);
          vector<Point> vp;
 
          int album = std::atoi(symbol->get_data().c_str());
@@ -131,15 +139,17 @@ void videoloop(VideoCapture &_capture, XbmcRemoteClient& _cli)
 //         }
 // 
 //         cout<<"Angle: "<<r.angle<<endl;
+        _gpio.setValue(Gpio::GPIO_LOW);
      }
-
-     imshow("MyVideo", frame); //show the frame in "MyVideo" window
-
-     if (waitKey(30) == 27) //wait for 'esc' key press for 30ms. If 'esc' key is pressed, break loop
-     {
-         cout << "esc key is pressed by user" << endl;
-         break;
-     }
+    #ifdef VIDEO_DEBUG
+      imshow("MyVideo", frame); //show the frame in "MyVideo" window
+    
+        if (waitKey(30) == 27) //wait for 'esc' key press for 30ms. If 'esc' key is pressed, break loop
+        {
+            cout << "esc key is pressed by user" << endl;
+            break;
+        }
+    #endif
    }
 }
 
@@ -164,13 +174,16 @@ int main(int argc, char **argv)
         HttpClient httpclient(url.c_str());
         XbmcRemoteClient cli(httpclient);
         
-        VideoCapture cap(0);
+        VideoCapture cap(CAMERA_INDEX);
         if (!cap.isOpened()) // if not success, exit program
         {
             cout << "Cannot open the video cam" << endl;
             return -1;
         }
-        videoloop(cap, cli);
+        
+        Gpio gpio(GPIO_PIN);
+        gpio.setValue(Gpio::GPIO_LOW);
+        videoloop(cap, cli, gpio);
         
     } 
     catch(JsonRpcException& e) {
